@@ -1,0 +1,75 @@
+# Environment variables
+.env
+.env.local
+.env.*
+!.env.example
+!env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv/
+
+# Node.js / Bun
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+bun-debug.log*
+
+# TypeScript / test artifacts
+*.tsbuildinfo
+coverage/
+coverage.json
+.nyc_output/
+
+# Runtime / logs
+logs/
+*.log
+tmp/
+temp/
+.cache/
+
+# Playwright / browser artifacts
+playwright-report/
+test-results/
+
+# IDEs / OS
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Tooling
+.uv/
+.cursor/
+
+# Dexter local context files (offloaded tool outputs)
+.dexter/

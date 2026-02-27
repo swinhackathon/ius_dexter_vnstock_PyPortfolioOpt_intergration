@@ -1,0 +1,80 @@
+DEXTER OPENCLAW INTEGRATION
+
+1. API ENDPOINT
+POST http://localhost:3000/ask
+Body: {"question": "...", "model": "gemini-2.5-flash", "modelProvider": "google"}
+
+Success: {"answer": "...", "success": true}
+Error: {"error": "...", "success": false}
+
+2. AUTH
+None (CORS enabled, localhost only)
+
+3. TIMEOUT
+Simple: 5-15s | Analysis: 30-60s | Complex: 60-120s
+Recommended: 120s
+
+4. LANGUAGE
+Bilingual - responds in same language as question
+
+5. OUTPUT
+Markdown long-form (200-3000 words), NOT short trade ideas
+
+6. DISCLAIMER
+⚠ Thông tin tham khảo, không phải lời khuyên đầu tư
+
+7. COMMON PROMPTS
+VN: "Giá VNM bao nhiêu?", "So sánh FPT và CMG", "Phân tích VCB Q4"
+EN: "VNM price?", "Compare FPT vs CMG", "VCB Q4 analysis"
+
+8. ERROR HANDLING
+try {
+  const result = exec({command: `curl.exe -s -m 120 -X POST "http://localhost:3000/ask" ...`, timeout: 130000});
+  const data = JSON.parse(result);
+  return data.success ? data.answer + "\n\n⚠ DISCLAIMER" : `⚠ Error: ${data.error}`;
+} catch { return "⚠ Không kết nối được Dexter"; }
+
+
+OPENCLAW SKILL FILE
+
+Create: ~/.openclaw/workspace/skills/dexter-financial/SKILL.md
+
+---
+name: dexter-financial
+description: Vietnamese stock analysis via Dexter (VNM, VCB, FPT)
+user-invocable: true
+metadata: {"openclaw": {"emoji": "📊"}}
+---
+
+# Dexter Financial
+
+exec({command: `curl.exe -s -m 120 -X POST "http://localhost:3000/ask" -H "Content-Type: application/json" -d "{\\"question\\":\\"${Q}\\"}"`, timeout: 130000})
+
+Capabilities: prices, financials, comparisons, VN30, sector analysis
+Requirements: Dexter (port 3000) + VNStock (port 8050) running
+
+
+CURL EXAMPLES
+
+PowerShell:
+curl.exe -s -X POST "http://localhost:3000/ask" -H "Content-Type: application/json" -d "{\"question\":\"FPT valuation\"}"
+
+Bash:
+curl -s -X POST "http://localhost:3000/ask" -H "Content-Type: application/json" -d '{"question":"FPT valuation"}'
+
+
+ARCHITECTURE
+OpenClaw → curl → Dexter (3000) → VNStock (8050) → VCI API
+
+
+STARTUP
+1. cd C:\Dexter\vnstock; .\venv\Scripts\Activate.ps1; python vnstock_service.py
+2. cd C:\Dexter\dexter; bun run server
+3. Test: curl.exe http://localhost:3000/health
+
+
+TROUBLESHOOTING
+Port 3000 busy: Get-Process -Id (Get-NetTCPConnection -LocalPort 3000).OwningProcess | Stop-Process -Force
+API key error: Check .env has GOOGLE_API_KEY
+VNStock down: Restart vnstock service
+High tokens: Already fixed with limit=4 defaults

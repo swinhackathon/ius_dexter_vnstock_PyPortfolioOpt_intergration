@@ -1,0 +1,46 @@
+# Environment / secrets
+.env
+.env.*
+!.env.example
+!env.example
+
+# Node / Bun dependencies
+node_modules/
+
+# Python environments and caches
+venv/
+.venv/
+env/
+ENV/
+__pycache__/
+*.py[cod]
+
+# Build output / coverage
+out/
+dist/
+coverage/
+*.lcov
+*.tgz
+
+# Runtime logs / temp
+logs/
+*.log
+report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
+tmp/
+temp/
+
+# Caches / tooling artifacts
+.eslintcache
+.cache/
+*.tsbuildinfo
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.nyc_output/
+.dexter/
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
