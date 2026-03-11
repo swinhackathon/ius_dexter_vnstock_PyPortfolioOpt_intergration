@@ -1,38 +1,60 @@
 version: 1.0
 
 # ============================================================
-# AWS App Runner configuration for Dexter + VNStock container
+# App Runner — Source Code Mode
+# App Runner tự build từ GitHub, không cần Docker/ECR
 # ============================================================
-# Usage:
-#   1. Push image to ECR
-#   2. Create App Runner service pointing to ECR image
-#   3. App Runner picks this file up automatically if using source code
-#      OR configure manually in console for ECR-based deploy
+# Flow: git push main → App Runner detect → build → deploy
 # ============================================================
 
+runtime: nodejs22
+
+build:
+  commands:
+    pre-build:
+      # Install Python dependencies (VNStock FastAPI + PyPortfolioOpt)
+      - echo "=== Installing Python dependencies ==="
+      - pip3 install -r vnstock/requirements.txt
+      - pip3 install -r dexter/src/investment_advisor/python/requirements.txt
+
+      # Install Bun (not included in nodejs20 managed runtime)
+      - echo "=== Installing Bun ==="
+      - curl -fsSL https://bun.sh/install | bash
+
+    build:
+      # Install Node/Bun dependencies for Dexter
+      - echo "=== Installing Dexter dependencies ==="
+      - export PATH="/root/.bun/bin:$HOME/.bun/bin:$PATH"
+      - cd dexter && bun install --frozen-lockfile
+
+      # Install Playwright Chromium (for browser tool)
+      - echo "=== Installing Playwright Chromium ==="
+      - cd dexter && bunx playwright install chromium
+
+      # Make startup script executable
+      - chmod +x start.sh
+
 run:
-  # App Runner routes external traffic to this port
+  # start.sh: khởi VNStock ở nền, sau đó khởi Dexter ở foreground
+  command: bash start.sh
+
   network:
     port: 3000
     env: DEXTER_SERVER_PORT
 
-  # Resource sizing:
-  #   - 1 vCPU / 2GB: minimum, may be slow for complex analysis
-  #   - 2 vCPU / 4GB: recommended (Chromium + vnstock + bun)
-  # Set via App Runner console → Service settings → Compute
-
-  # Environment variables that are safe to version-control.
-  # NEVER put real API keys here — use App Runner secret injection.
   env:
-    # VNStock runs on localhost inside the same container
+    # VNStock chạy cùng container, giao tiếp qua localhost
     - name: VNSTOCK_API_URL
       value: http://localhost:8050
 
-    # Dexter server port (must match network.port above)
     - name: DEXTER_SERVER_PORT
       value: "3000"
 
-    # Advisory tool settings (tune as needed)
+    # Python binary trong managed runtime
+    - name: DEXTER_ADVISORY_PYTHON_BIN
+      value: python3
+
+    # Advisory tool settings
     - name: DEXTER_ADVISORY_PROVIDER_TIMEOUT_MS
       value: "10000"
     - name: DEXTER_ADVISORY_TIMEOUT_BUDGET_MS
@@ -46,18 +68,14 @@ run:
     - name: DEXTER_ADVISORY_GEMINI_NLG_MODEL
       value: gemini-2.0-flash
 
-    # Python binary path inside the container
-    - name: DEXTER_ADVISORY_PYTHON_BIN
-      value: python3
-
 # ============================================================
-# Secrets to set via App Runner Console (NOT in this file):
+# Secrets — set qua App Runner Console (KHÔNG để ở đây):
 # ============================================================
-# GOOGLE_API_KEY          — Gemini LLM
-# OPENAI_API_KEY          — OpenAI LLM (optional)
-# ANTHROPIC_API_KEY       — Claude LLM (optional)
+# GOOGLE_API_KEY
+# OPENAI_API_KEY (optional)
+# ANTHROPIC_API_KEY (optional)
 # FINANCIAL_DATASETS_API_KEY
-# EXASEARCH_API_KEY       — Web search (optional)
-# TAVILY_API_KEY          — Web search fallback (optional)
-# LANGSMITH_API_KEY       — Tracing (optional)
+# EXASEARCH_API_KEY (optional)
+# TAVILY_API_KEY (optional)
+# LANGSMITH_API_KEY (optional)
 # ============================================================
