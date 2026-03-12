@@ -45,6 +45,8 @@ run:
       value: /app/venv/bin/python3
     - name: PLAYWRIGHT_BROWSERS_PATH
       value: /app/.playwright
+    - name: BEDROCK_AWS_REGION
+      value: us-east-1
     - name: DEXTER_ADVISORY_PROVIDER_TIMEOUT_MS
       value: "10000"
     - name: DEXTER_ADVISORY_TIMEOUT_BUDGET_MS
@@ -56,6 +58,4 @@ run:
     - name: DEXTER_ADVISORY_GEMINI_NLG_ENABLED
       value: "true"
     - name: DEXTER_ADVISORY_GEMINI_NLG_MODEL
-      value: gemini-2.0-flash
-    - name: GOOGLE_API_KEY
-      value: "AIzaSyAh06_QFuyEsHrXj2rjWkTb7QWsgXYfI8Y"
+      value: "bedrock:anthropic.claude-3-haiku-20240307-v1:0"

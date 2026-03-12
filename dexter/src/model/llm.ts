@@ -3,6 +3,7 @@ import { ChatOpenAI } from '@langchain/openai';
 import { ChatAnthropic } from '@langchain/anthropic';
 import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
 import { ChatOllama } from '@langchain/ollama';
+import { ChatBedrockConverse } from '@langchain/aws';
 import { ChatPromptTemplate } from '@langchain/core/prompts';
 import { SystemMessage, HumanMessage } from '@langchain/core/messages';
 import { BaseChatModel } from '@langchain/core/language_models/chat_models';
@@ -32,13 +33,13 @@ async function withRetry<T>(fn: () => Promise<T>, provider: string, maxAttempts 
       return await fn();
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
-      
+
       // Only log on final attempt to reduce noise
       if (attempt === maxAttempts - 1) {
         logger.error(`[${provider} API] error (attempt ${attempt + 1}/${maxAttempts}): ${message}`);
         throw new Error(`[${provider} API] ${message}`);
       }
-      
+
       await new Promise((r) => setTimeout(r, 500 * 2 ** attempt));
     }
   }
@@ -115,6 +116,23 @@ const MODEL_FACTORIES: Record<string, ModelFactory> = {
       model: name.replace(/^ollama:/, ''),
       ...opts,
       ...(process.env.OLLAMA_BASE_URL ? { baseUrl: process.env.OLLAMA_BASE_URL } : {}),
+    }),
+  bedrock: (name, opts) =>
+    new ChatBedrockConverse({
+      model: name.replace(/^bedrock:/, ''),
+      region: process.env.BEDROCK_AWS_REGION ?? process.env.AWS_REGION ?? 'us-east-1',
+      ...(process.env.BEDROCK_AWS_ACCESS_KEY_ID
+        ? {
+          credentials: {
+            accessKeyId: process.env.BEDROCK_AWS_ACCESS_KEY_ID!,
+            secretAccessKey: process.env.BEDROCK_AWS_SECRET_ACCESS_KEY!,
+            ...(process.env.BEDROCK_AWS_SESSION_TOKEN
+              ? { sessionToken: process.env.BEDROCK_AWS_SESSION_TOKEN }
+              : {}),
+          },
+        }
+        : {}),
+      ...opts,
     }),
 };
 

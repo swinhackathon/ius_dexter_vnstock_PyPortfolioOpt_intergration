@@ -66,12 +66,12 @@ export class GeminiNarrativeRewriter implements AdvisoryNarrativeRewriter {
       };
     }
 
-    if (!process.env.GOOGLE_API_KEY) {
+    if (!this.model.startsWith('bedrock:') && !process.env.GOOGLE_API_KEY) {
       return {
         summary: input.response.summary,
         alternatives: input.response.alternatives,
         rewritten: false,
-        warning: 'Gemini NLG skipped: GOOGLE_API_KEY is missing.',
+        warning: 'NLG skipped: GOOGLE_API_KEY is missing and model is not a bedrock: model.',
       };
     }
 

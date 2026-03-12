@@ -72,6 +72,12 @@ export const PROVIDERS: ProviderDef[] = [
     modelPrefix: 'ollama:',
     fastModel: 'ollama:qwen2.5:7b',
   },
+  {
+    id: 'bedrock',
+    displayName: 'AWS Bedrock',
+    modelPrefix: 'bedrock:',
+    fastModel: 'bedrock:anthropic.claude-3-haiku-20240307-v1:0',
+  },
 ];
 
 const defaultProvider = PROVIDERS.find((p) => p.id === 'openai')!;
