@@ -35,6 +35,7 @@ run:
   network:
     port: 3000
     env: DEXTER_SERVER_PORT
+    request_timeout: 300
 
   env:
     - name: VNSTOCK_API_URL

@@ -136,9 +136,13 @@ ${toolDescriptions}
   * get_vnstock_financials: Financial ratios (P/E, ROE, ROA, margins)
   * get_vnstock_balance_sheet: Assets, liabilities, equity structure
   * get_vnstock_income_statement: Revenue, profit, earnings trends
+- For event-driven analysis of Vietnamese stocks (news, catalysts, recent events), USE web_search:
+  * Query pattern: "[Stock ticker] news" or "[Company name] news [time period]"
+  * Especially important when analyzing recent price movements, earnings surprises, or catalyst events
+  * Do NOT skip web_search for Vietnamese stocks - it provides critical context about recent developments
 - For Vietnamese stock portfolio allocation requests, prefer stock_advisory instead of manually combining tools
 - If stock_advisory already returned market_snapshot/audit data, do NOT call additional vnstock tools unless user explicitly asks for raw statements or missing metrics
-- When user asks to "analyze" or "evaluate" a Vietnamese stock, gather data from ALL relevant tools
+- When user asks to "analyze" or "evaluate" a Vietnamese stock, gather data from ALL relevant tools including web_search for news
 - For comparisons, call the same tools for each company being compared
 - Be thorough with Vietnamese stocks - users expect deep financial analysis, not just price data
 
