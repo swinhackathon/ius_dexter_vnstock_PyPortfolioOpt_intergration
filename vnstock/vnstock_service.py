@@ -5,11 +5,31 @@ Sử dụng thư viện vnstock để phục vụ AI Agent phân tích chứng k
 
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
-from typing import Optional, List
+from typing import Optional, List, Any
 import uvicorn
 import pandas as pd
 from vnstock import Vnstock
 from datetime import datetime, timedelta
+import time
+
+# ---------------------------------------------------------------------------
+# Simple TTL in-memory cache
+# Prevents redundant external API calls when the agent calls the same
+# endpoint multiple times within a single /ask request cycle.
+# ---------------------------------------------------------------------------
+_CACHE: dict[str, tuple[float, Any]] = {}  # key → (expires_at, value)
+DEFAULT_CACHE_TTL = 60  # seconds
+
+
+def _cache_get(key: str) -> Any | None:
+    entry = _CACHE.get(key)
+    if entry and time.monotonic() < entry[0]:
+        return entry[1]
+    return None
+
+
+def _cache_set(key: str, value: Any, ttl: int = DEFAULT_CACHE_TTL) -> None:
+    _CACHE[key] = (time.monotonic() + ttl, value)
 
 app = FastAPI(
     title="VNStock API Service",
@@ -94,25 +114,32 @@ async def health_check():
 async def get_realtime_price(ticker: str):
     """
     Lấy giá intraday realtime của 1 mã cổ phiếu
-    
+
     Params:
         ticker: Mã cổ phiếu (VD: VCB, ACB, HPG)
-    
+
     Returns:
         Dữ liệu giá realtime trong ngày
     """
+    cache_key = f"price:{ticker.upper()}"
+    cached = _cache_get(cache_key)
+    if cached is not None:
+        return cached
+
     try:
         stock = get_vnstock_instance(ticker)
         data = stock.quote.intraday()
-        
+
         if data is None or data.empty:
             raise HTTPException(status_code=404, detail=f"Không tìm thấy dữ liệu cho mã {ticker}")
-        
-        return {
+
+        response = {
             "ticker": ticker.upper(),
             "data": data.to_dict(orient='records'),
             "timestamp": datetime.now().isoformat()
         }
+        _cache_set(cache_key, response)
+        return response
     except HTTPException:
         raise
     except Exception as e:
@@ -302,29 +329,34 @@ async def get_income_statement(ticker: str, limit: int = Query(4, description="G
 async def get_price_board(tickers: str = Query(..., description="Danh sách mã cổ phiếu, cách nhau bởi dấu phẩy (VD: VCB,ACB,TCB)")):
     """
     Lấy bảng giá của nhiều mã cổ phiếu cùng lúc
-    
+
     Params:
         tickers: Danh sách mã cổ phiếu, cách nhau bởi dấu phẩy (VD: VCB,ACB,TCB)
-    
+
     Returns:
         Bảng giá tổng hợp của các mã
     """
     try:
         ticker_list = [t.strip().upper() for t in tickers.split(',')]
-        
+        ticker_list = sorted(set(ticker_list))  # normalize for cache key
+
         if not ticker_list:
             raise HTTPException(status_code=400, detail="Vui lòng cung cấp ít nhất 1 mã cổ phiếu")
-        
+
+        cache_key = f"board:{','.join(ticker_list)}"
+        cached = _cache_get(cache_key)
+        if cached is not None:
+            return cached
+
         results = []
         errors = []
-        
+
         for ticker in ticker_list:
             try:
                 stock = Vnstock().stock(symbol=ticker, source='VCI')
                 quote_data = stock.quote.intraday()
-                
+
                 if quote_data is not None and not quote_data.empty:
-                    # Lấy dòng cuối cùng (giá mới nhất)
                     latest = quote_data.iloc[-1].to_dict()
                     latest['ticker'] = ticker
                     results.append(latest)
@@ -332,13 +364,15 @@ async def get_price_board(tickers: str = Query(..., description="Danh sách mã 
                     errors.append({"ticker": ticker, "error": "Không có dữ liệu"})
             except Exception as e:
                 errors.append({"ticker": ticker, "error": str(e)})
-        
-        return {
+
+        response = {
             "requested_tickers": ticker_list,
             "data": results,
             "errors": errors if errors else None,
             "timestamp": datetime.now().isoformat()
         }
+        _cache_set(cache_key, response)
+        return response
     except HTTPException:
         raise
     except Exception as e:
@@ -379,28 +413,32 @@ async def get_company_info(ticker: str):
 async def get_market_indices():
     """
     Lấy thông tin các chỉ số thị trường: VN-Index, HNX-Index, UPCOM
-    
+
     Returns:
         Dữ liệu các chỉ số thị trường hiện tại
     """
+    cached = _cache_get("index")
+    if cached is not None:
+        return cached
+
     try:
         vnstock = Vnstock()
-        
+
         results = {}
-        
+
         # Lấy thông tin overview của thị trường
         # Dùng trading.price_board hoặc lấy từ một stock bất kỳ
         try:
             # Thử lấy market overview từ stock data
             stock = vnstock.stock(symbol='VCB', source='VCI')
-            
+
             # Lấy giá lịch sử gần đây nhất để có context về market
             # Hoặc có thể dùng quote để lấy market info
             market_data = stock.quote.history(
                 start=(datetime.now() - timedelta(days=2)).strftime('%Y-%m-%d'),
                 end=datetime.now().strftime('%Y-%m-%d')
             )
-            
+
             # Trả về thông tin đơn giản hóa
             results = {
                 "message": "Market indices data retrieval from vnstock library has limitations",
@@ -410,18 +448,20 @@ async def get_market_indices():
                 "market_open": True,  # Simplified - could check trading hours
                 "last_updated": datetime.now().isoformat()
             }
-            
+
         except Exception as e:
             results = {
                 "error": "Unable to fetch market indices",
                 "detail": str(e),
                 "note": "VNINDEX/HNXINDEX data may require different data source"
             }
-        
-        return {
+
+        response = {
             "indices": results,
             "timestamp": datetime.now().isoformat()
         }
+        _cache_set("index", response, ttl=120)
+        return response
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Lỗi khi lấy chỉ số thị trường: {str(e)}")
 
