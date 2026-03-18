@@ -25,6 +25,7 @@ coverage/
 # Runtime logs / temp
 logs/
 *.log
+report*.md
 report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 tmp/
 temp/
