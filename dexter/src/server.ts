@@ -15,6 +15,7 @@ interface AskRequest {
   question: string;
   model?: string;
   modelProvider?: string;
+  maxIterations?: number;
 }
 
 interface SuccessResponse {
@@ -68,7 +69,7 @@ async function handleAsk(request: Request): Promise<Response> {
       query: question,
       model,
       modelProvider,
-      maxIterations: 10,
+      maxIterations: body.maxIterations ?? 10,
     });
 
     return jsonResponse({ answer, success: true } as SuccessResponse);
